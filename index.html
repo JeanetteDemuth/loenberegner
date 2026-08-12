@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#173f4f" />
+  <title>Lønberegner – arbejdstid og estimeret udbetaling</title>
+  <style>
+    :root {
+      --bg: #eef4f5; --card: #fff; --primary: #173f4f; --primary-soft: #dcebee;
+      --accent: #2f7f8d; --text: #183038; --muted: #65777d; --positive: #2b7a56;
+      --negative: #b04b4b; --border: #d4e0e3; --shadow: 0 16px 40px rgba(20,58,70,.11);
+      --warm: #fff8e8; --warm-border: #ead8a4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      color: var(--text); background: radial-gradient(circle at top left,rgba(47,127,141,.16),transparent 34%),linear-gradient(160deg,#f7fbfb 0%,var(--bg) 100%);
+      padding: 24px 16px 40px;
+    }
+    .app { width: min(900px,100%); margin: 0 auto; }
+    header { margin-bottom: 20px; text-align:center; }
+    .eyebrow { display:inline-block; padding:7px 12px; border-radius:999px; background:var(--primary-soft); color:var(--primary); font-size:.82rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-bottom:12px; }
+    h1 { margin:0 0 10px; font-size:clamp(2rem,5vw,3rem); line-height:1.05; color:var(--primary); }
+    header p { margin:0 auto; max-width:680px; color:var(--muted); line-height:1.55; }
+    .card { background:rgba(255,255,255,.97); border:1px solid rgba(212,224,227,.9); border-radius:24px; box-shadow:var(--shadow); padding:22px; margin-bottom:18px; }
+    h2 { margin:0 0 6px; font-size:1.2rem; color:var(--primary); }
+    .section-intro { margin:0 0 18px; color:var(--muted); font-size:.9rem; line-height:1.5; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .grid.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .field label { display:block; margin-bottom:7px; font-size:.9rem; font-weight:700; color:var(--primary); }
+    .field small { display:block; margin-top:5px; color:var(--muted); line-height:1.35; }
+    .input-wrap { position:relative; }
+    input { width:100%; min-height:52px; border:1px solid var(--border); border-radius:14px; padding:12px 50px 12px 14px; font:inherit; font-size:1rem; color:var(--text); background:#fbfdfd; outline:none; transition:.2s; }
+    input:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(47,127,141,.12); }
+    .suffix { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:.88rem; pointer-events:none; }
+    .actions { display:flex; gap:10px; margin-top:18px; }
+    button { border:0; border-radius:14px; min-height:48px; padding:0 18px; font:inherit; font-weight:800; cursor:pointer; }
+    .primary-btn { flex:1; background:var(--primary); color:white; }
+    .secondary-btn { background:var(--primary-soft); color:var(--primary); }
+    .results { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:18px; }
+    .result { border:1px solid var(--border); background:#f9fcfc; border-radius:18px; padding:17px; }
+    .result.main { grid-column:span 3; background:linear-gradient(135deg,var(--primary),#245d69); color:#fff; border:0; padding:22px; }
+    .result.net { background:linear-gradient(135deg,#edf8f4,#f8fcfa); border-color:#cce3d8; }
+    .result-label { display:block; font-size:.84rem; color:var(--muted); margin-bottom:7px; }
+    .result.main .result-label { color:rgba(255,255,255,.78); }
+    .result-value { font-size:clamp(1.25rem,3.5vw,1.85rem); font-weight:850; letter-spacing:-.02em; }
+    .result.main .result-value { font-size:clamp(2rem,7vw,3.2rem); }
+    .change.positive { color:var(--positive); } .change.negative { color:var(--negative); } .change.neutral { color:var(--text); }
+    .comparison { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+    .paybox { border:1px solid var(--border); border-radius:18px; padding:17px; background:#fbfdfd; }
+    .paybox h3 { margin:0 0 12px; font-size:1rem; color:var(--primary); }
+    .row { display:flex; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #e8eff0; font-size:.92rem; }
+    .row:last-child { border-bottom:0; padding-bottom:0; }
+    .row strong { white-space:nowrap; }
+    .net-row { font-size:1.04rem; color:var(--primary); }
+    .notice { margin-top:16px; padding:14px 15px; border-radius:14px; background:var(--warm); border:1px solid var(--warm-border); color:#6a5625; font-size:.87rem; line-height:1.5; }
+    .note { margin:16px 2px 0; color:var(--muted); font-size:.86rem; line-height:1.5; }
+    .error { display:none; margin-top:12px; padding:11px 13px; border-radius:12px; background:#fff0f0; color:#8f3636; font-size:.9rem; }
+    @media(max-width:720px){ .grid,.grid.two,.results,.comparison{grid-template-columns:1fr;} .result.main{grid-column:auto;} .actions{flex-direction:column;} .secondary-btn{width:100%;} .card{padding:18px;border-radius:20px;} }
+  </style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div class="eyebrow">Arbejdstimer</div>
+    <h1>Løn & arbejdstid</h1>
+    <p>Se hvad det betyder for både din bruttoløn og din estimerede udbetaling, hvis du går op eller ned i tid.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Løn og arbejdstid</h2>
+    <p class="section-intro">Indtast din nuværende månedsløn ekskl. arbejdsgiverbetalt pension og dit ugentlige timetal.</p>
+    <div class="grid">
+      <div class="field"><label for="salary">Nuværende månedsløn</label><div class="input-wrap"><input id="salary" type="number" min="0" step="100" value="35000"><span class="suffix">kr.</span></div></div>
+      <div class="field"><label for="currentHours">Nuværende timer pr. uge</label><div class="input-wrap"><input id="currentHours" type="number" min="1" max="80" step="0.5" value="37"><span class="suffix">timer</span></div></div>
+      <div class="field"><label for="newHours">Nyt timetal pr. uge</label><div class="input-wrap"><input id="newHours" type="number" min="0" max="80" step="0.5" value="32"><span class="suffix">timer</span></div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Skat og pension</h2>
+    <p class="section-intro">Find trækprocent og månedsfradrag på dit skattekort. Kommunen behøver ikke indtastes, når trækprocenten bruges.</p>
+    <div class="grid two">
+      <div class="field"><label for="taxRate">Trækprocent</label><div class="input-wrap"><input id="taxRate" type="number" min="0" max="70" step="0.1" value="38"><span class="suffix">%</span></div><small>Fx 38 fra dit skattekort.</small></div>
+      <div class="field"><label for="deduction">Månedsfradrag</label><div class="input-wrap"><input id="deduction" type="number" min="0" step="100" value="5000"><span class="suffix">kr.</span></div><small>Fradrag pr. måned på hovedkortet.</small></div>
+      <div class="field"><label for="pensionRate">Egen pensionsandel</label><div class="input-wrap"><input id="pensionRate" type="number" min="0" max="50" step="0.1" value="0"><span class="suffix">%</span></div><small>Kun det beløb du selv betaler af lønnen. Sæt 0 hvis det ikke er relevant.</small></div>
+      <div class="field"><label for="atp">ATP – egen andel pr. måned</label><div class="input-wrap"><input id="atp" type="number" min="0" step="1" value="0"><span class="suffix">kr.</span></div><small>Indtast beløbet fra din lønseddel. Sæt 0 hvis du ikke kender det.</small></div>
+    </div>
+
+    <div class="actions"><button class="primary-btn" id="calculateBtn" type="button">Beregn konsekvens</button><button class="secondary-btn" id="resetBtn" type="button">Nulstil</button></div>
+    <div class="error" id="errorBox" role="alert"></div>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <h2>Resultat</h2>
+    <div class="results">
+      <div class="result main"><span class="result-label">Ny månedsløn ekskl. arbejdsgiverbetalt pension</span><div class="result-value" id="newSalary">0 kr.</div></div>
+      <div class="result"><span class="result-label">Forskel i bruttoløn pr. måned</span><div class="result-value change" id="monthlyDifference">0 kr.</div></div>
+      <div class="result net"><span class="result-label">Estimeret ny udbetaling</span><div class="result-value" id="newNet">0 kr.</div></div>
+      <div class="result net"><span class="result-label">Forskel i udbetaling pr. måned</span><div class="result-value change" id="netDifference">0 kr.</div></div>
+      <div class="result"><span class="result-label">Forskel i udbetaling pr. år</span><div class="result-value change" id="annualNetDifference">0 kr.</div></div>
+      <div class="result"><span class="result-label">Beregnet timeløn</span><div class="result-value" id="hourlyRate">0 kr.</div></div>
+      <div class="result"><span class="result-label">Ændring i arbejdstid</span><div class="result-value change" id="hoursDifference">0 timer</div></div>
+    </div>
+
+    <div class="comparison">
+      <div class="paybox">
+        <h3>Nuværende situation</h3>
+        <div class="row"><span>Bruttoløn</span><strong id="oldGrossDetail">0 kr.</strong></div>
+        <div class="row"><span>Egen pension</span><strong id="oldPensionDetail">0 kr.</strong></div>
+        <div class="row"><span>AM-bidrag (8 %)</span><strong id="oldAmDetail">0 kr.</strong></div>
+        <div class="row"><span>Estimeret A-skat</span><strong id="oldTaxDetail">0 kr.</strong></div>
+        <div class="row"><span>ATP</span><strong id="oldAtpDetail">0 kr.</strong></div>
+        <div class="row net-row"><span>Estimeret udbetalt</span><strong id="oldNetDetail">0 kr.</strong></div>
+      </div>
+      <div class="paybox">
+        <h3>Ved nyt timetal</h3>
+        <div class="row"><span>Bruttoløn</span><strong id="newGrossDetail">0 kr.</strong></div>
+        <div class="row"><span>Egen pension</span><strong id="newPensionDetail">0 kr.</strong></div>
+        <div class="row"><span>AM-bidrag (8 %)</span><strong id="newAmDetail">0 kr.</strong></div>
+        <div class="row"><span>Estimeret A-skat</span><strong id="newTaxDetail">0 kr.</strong></div>
+        <div class="row"><span>ATP</span><strong id="newAtpDetail">0 kr.</strong></div>
+        <div class="row net-row"><span>Estimeret udbetalt</span><strong id="newNetDetail">0 kr.</strong></div>
+      </div>
+    </div>
+
+    <div class="notice"><strong>Vejledende beregning:</strong> Appen laver et estimat ud fra 8 % AM-bidrag, din trækprocent og dit månedsfradrag. Den kan ikke ramme en lønseddel 100 %, fordi fx topskat, beskæftigelsesfradrag, pensionsforhold, personalegoder, ferie, kirkeskat, flere arbejdsgivere og ændringer i skattekortet kan påvirke den faktiske udbetaling.</div>
+    <p class="note">Ved ændret arbejdstid antages samme timeløn. ATP er i denne simple model fastholdt til det indtastede månedlige beløb.</p>
+  </section>
+</main>
+
+<script>
+  const ids = ['salary','currentHours','newHours','taxRate','deduction','pensionRate','atp'];
+  const $ = id => document.getElementById(id);
+  const money = new Intl.NumberFormat('da-DK',{maximumFractionDigits:0});
+  const money2 = new Intl.NumberFormat('da-DK',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = new Intl.NumberFormat('da-DK',{maximumFractionDigits:1});
+
+  function signed(value, formatter, suffix='') {
+    if (Math.abs(value) < .0001) return `0${suffix}`;
+    return `${value > 0 ? '+' : '−'}${formatter.format(Math.abs(value))}${suffix}`;
+  }
+  function setChangeClass(el, value) {
+    el.classList.remove('positive','negative','neutral');
+    el.classList.add(value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral');
+  }
+  function estimateNet(gross, taxRate, deduction, pensionRate, atp) {
+    const pension = gross * pensionRate / 100;
+    const amBase = Math.max(0, gross - pension);
+    const am = amBase * .08;
+    const afterAm = Math.max(0, amBase - am);
+    const taxableForA = Math.max(0, afterAm - deduction);
+    const aTax = taxableForA * taxRate / 100;
+    const net = Math.max(0, gross - pension - am - aTax - atp);
+    return { gross, pension, am, aTax, atp, net };
+  }
+  function renderDetail(prefix, d) {
+    $(`${prefix}GrossDetail`).textContent = `${money.format(d.gross)} kr.`;
+    $(`${prefix}PensionDetail`).textContent = `−${money.format(d.pension)} kr.`;
+    $(`${prefix}AmDetail`).textContent = `−${money.format(d.am)} kr.`;
+    $(`${prefix}TaxDetail`).textContent = `−${money.format(d.aTax)} kr.`;
+    $(`${prefix}AtpDetail`).textContent = `−${money.format(d.atp)} kr.`;
+    $(`${prefix}NetDetail`).textContent = `${money.format(d.net)} kr.`;
+  }
+  function calculate() {
+    const salary = Number($('salary').value), currentHours = Number($('currentHours').value), newHours = Number($('newHours').value);
+    const taxRate = Number($('taxRate').value), deduction = Number($('deduction').value), pensionRate = Number($('pensionRate').value), atp = Number($('atp').value);
+    const values = [salary,currentHours,newHours,taxRate,deduction,pensionRate,atp];
+    if (values.some(v => !Number.isFinite(v)) || salary < 0 || currentHours <= 0 || newHours < 0 || taxRate < 0 || taxRate > 70 || deduction < 0 || pensionRate < 0 || pensionRate > 50 || atp < 0) {
+      $('errorBox').textContent = 'Kontrollér venligst felterne. Timetal og beløb skal være positive, og procenterne skal være gyldige.';
+      $('errorBox').style.display = 'block'; return;
+    }
+    $('errorBox').style.display = 'none';
+    const newSalary = salary * (newHours / currentHours);
+    const grossDiff = newSalary - salary;
+    const hourlyRate = salary / (currentHours * 52 / 12);
+    const hoursDiff = newHours - currentHours;
+    const oldPay = estimateNet(salary,taxRate,deduction,pensionRate,atp);
+    const newPay = estimateNet(newSalary,taxRate,deduction,pensionRate,atp);
+    const netDiff = newPay.net - oldPay.net;
+
+    $('newSalary').textContent = `${money.format(newSalary)} kr.`;
+    $('monthlyDifference').textContent = signed(grossDiff,money,' kr.');
+    $('newNet').textContent = `${money.format(newPay.net)} kr.`;
+    $('netDifference').textContent = signed(netDiff,money,' kr.');
+    $('annualNetDifference').textContent = signed(netDiff*12,money,' kr.');
+    $('hourlyRate').textContent = `${money2.format(hourlyRate)} kr.`;
+    $('hoursDifference').textContent = signed(hoursDiff,num,' timer');
+    ['monthlyDifference','netDifference','annualNetDifference','hoursDifference'].forEach(id => {
+      const map = {monthlyDifference:grossDiff,netDifference:netDiff,annualNetDifference:netDiff*12,hoursDifference:hoursDiff}; setChangeClass($(id),map[id]);
+    });
+    renderDetail('old',oldPay); renderDetail('new',newPay);
+  }
+
+  $('calculateBtn').addEventListener('click',calculate);
+  ids.forEach(id => { $(id).addEventListener('input',calculate); $(id).addEventListener('keydown',e => { if(e.key==='Enter') calculate(); }); });
+  $('resetBtn').addEventListener('click',() => {
+    $('salary').value=''; $('currentHours').value='37'; $('newHours').value=''; $('taxRate').value='38'; $('deduction').value=''; $('pensionRate').value='0'; $('atp').value='0'; calculate(); $('salary').focus();
+  });
+  calculate();
+</script>
+</body>
+</html>
